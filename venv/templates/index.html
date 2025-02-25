@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Accueil - CorrigeMath{% endblock %}
+
+{% block content %}
+<section class="showcase">
+    <div class="container">
+        <h1>
+            <span style="font-family: 'Courier New', monospace;">
+                <span class="text-primary">f(x) = Solution Intelligente</span>
+            </span>
+        </h1>
+        <div style="font-size: 24px; margin: 20px 0;">
+            <span style="color: #77aaff;">∫</span> 
+            Automatisez vos corrections 
+            <span style="color: #77aaff;">dx</span>
+        </div>
+        <p>Corrige tes copies de maths rapidement et efficacement</p>
+        {% if user %}
+        <p>Bienvenue, {{ user }} !</p>
+        {% endif %}
+    </div>
+</section>
+<div class="content">
+    <form action="/upload" method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="image">Selectionner une image:</label>
+            <input type="file" class="form-control" id="image" name="file" multiple >
+        </div>
+        <button type="submit" class="btn">Upload Image</button>
+    </form>
+    <img id="preview" alt="Aperçu de l'image">
+    <h2>A propos de nous</h2>
+    <p>Nous fournissons une plateforme pour corriger les examens de mathématiques de manière efficace et précise. Notre système est conçu pour aider les enseignants et les étudiants à gagner du temps et à améliorer leurs performances.</p>
+</div>
+{% endblock %}
+

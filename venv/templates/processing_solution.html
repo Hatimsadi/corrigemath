@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<div id="status" style="text-align: center; margin-top: 20px;">
+    <div class="spinner"></div>
+    <p>Generation de la solution</p>
+</div>
+{% endblock %}
+{% block styles %}
+<!-- Styles for the loading spinner -->
+<style>
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid rgba(0, 0, 0, 0.2);
+        border-top: 4px solid #000;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: auto;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+{% block scripts %}
+<script>
+    function checkStatus() {
+        const filename = "{{ filename }}";
+        
+        // Change from check_file to check_solution
+        fetch(`/check_solution/${filename}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.ready) {
+                    window.location.href = data.url;
+                } else if (data.error) {
+                    document.getElementById("status").innerHTML = data.error;
+                    clearInterval(intervalId);
+                } 
+            })
+    }
+    
+    const intervalId = setInterval(checkStatus, 2000);
+    checkStatus();
+    </script>
+{% endblock %}
