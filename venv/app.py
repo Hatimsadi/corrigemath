@@ -1,0 +1,200 @@
+from flask import Flask, render_template, request, session, flash, redirect, url_for, send_from_directory, jsonify
+from flask_sqlalchemy import SQLAlchemy
+import os
+import logging
+from werkzeug.utils import secure_filename
+
+db = SQLAlchemy()
+
+def create_app():
+    """Factory to create the Flask app."""
+    app = Flask(__name__)
+    app.secret_key = "replace_with_a_secret_key"
+    BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+    # --- Config ---
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.sqlite3'
+    app.config['UPLOAD_FOLDER'] = os.path.join(BASE_DIR, 'uploads')
+    app.config['PDF_FOLDER'] = os.path.join(BASE_DIR, 'static', 'pdfs')
+    app.config['TEX_FOLDER'] = os.path.join(BASE_DIR, 'static', 'tex')    
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_pre_ping': True,
+        'pool_recycle': 300,
+    }
+
+    db.init_app(app)
+
+    # Ensure these directories exist
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    os.makedirs(app.config['PDF_FOLDER'], exist_ok=True)
+    os.makedirs(app.config['TEX_FOLDER'], exist_ok=True)
+
+    # Suppress unnecessary werkzeug logs
+    log = logging.getLogger('werkzeug')
+    log.setLevel(logging.ERROR)
+
+    # --- DB Model ---
+    class Users(db.Model):
+        _id = db.Column("id", db.Integer, primary_key=True)
+        username = db.Column(db.String(100))
+        email = db.Column(db.String(100))
+        password = db.Column(db.String(100))
+
+        def __init__(self, username, email, password):
+            self.username = username
+            self.email = email
+            self.password = password
+
+    def allowed_file(filename):
+        ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
+        return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    @app.context_processor
+    def inject_user():
+        user = None
+        # Note: Since Users is defined inside create_app, you can refer to it here.
+        if 'email' in session:
+            found_user = Users.query.filter_by(email=session['email']).first()
+            if found_user:
+                user = found_user.username
+        return {'user': user}
+
+    # ---------------- ROUTES ----------------
+    @app.route('/')
+    def home():
+        user = None
+        if 'email' in session:
+            found_user = Users.query.filter_by(email=session['email']).first()
+            if found_user:
+                user = found_user.username
+        return render_template('index.html', user=user)
+
+    @app.route('/login', methods=['POST', 'GET'])
+    def login():
+        if request.method == 'POST':
+            user = request.form['email']
+            password = request.form['password']
+            found_user = Users.query.filter_by(email=user).first()
+            if found_user:
+                if found_user.password == password:
+                    session['email'] = user
+                    return redirect(url_for('home'))
+                else:
+                    flash('Mot de passe incorrect')
+            else:
+                flash('Utilisateur inconnu , veuillez vous inscrire')
+            return redirect(url_for('login'))
+        return render_template('login.html')
+
+    @app.route('/register', methods=['POST', 'GET'])
+    def register():
+        if request.method == 'POST':
+            us = request.form['username']
+            user = request.form['email']
+            password = request.form['password']
+            if Users.query.filter_by(email=user).first():
+                flash('Utilisateur existe déjà')
+                return redirect(url_for('register'))
+            new_user = Users(us, user, password)
+            db.session.add(new_user)
+            db.session.commit()
+            flash('Bienvenue')
+            return redirect(url_for('login'))
+        return render_template('register.html')
+
+    @app.route('/logout')
+    def logout():
+        session.pop('email', None)
+        return redirect(url_for('home'))
+
+    @app.route("/upload", methods=["POST", "GET"])
+    def upload():
+        from tasks import process_file_task  # Import here to avoid circular import
+        if request.method == "POST":
+            if 'file' not in request.files:
+                flash('No file part')
+                return redirect(url_for('upload'))
+            files = request.files.getlist('file')  
+
+            if not files or files[0].filename == '':
+                flash('No selected file')
+                return redirect(url_for('upload'))
+            saved_files = []
+            for file in files:
+                if file and allowed_file(file.filename):
+                    try:
+                        filename = secure_filename(file.filename)
+                        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                        # Start the file processing task
+                        process_file_task.delay(filename)
+                        return redirect(url_for('processing', filename=filename))
+                    except Exception as e:
+                        flash(str(e))
+            return redirect(url_for('upload'))
+        return render_template('upload.html')
+
+    @app.route("/processing/<filename>")
+    def processing(filename):
+        return render_template("processing.html", filename=filename)
+
+    @app.route("/display_pdf/<filename>")
+    def display_pdf(filename):
+        return render_template("display_pdf.html", pdf_filename=filename)
+
+    @app.route("/check_file/<filename>")
+    def check_file(filename):
+        pdf_filename = f"{os.path.splitext(filename)[0]}.pdf"
+        pdf_path = os.path.join(app.config['PDF_FOLDER'], pdf_filename)
+        original_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+        if os.path.exists(pdf_path):
+            return jsonify({"ready": True, "url": url_for('display_pdf', filename=pdf_filename)})
+        elif os.path.exists(original_path):
+            return jsonify({"ready": False})
+        else:
+            return jsonify({"ready": False, "url": url_for('home')})
+
+    @app.route('/download/<filename>')
+    def download_pdf(filename):
+        return send_from_directory(
+            app.config['PDF_FOLDER'],
+            filename,
+            as_attachment=True
+        )
+
+    @app.route("/processing_solution/<filename>")
+    def processing_solution(filename):
+        return render_template("processing_solution.html", filename=filename)
+
+    @app.route('/solution_pdf/<filename>')
+    def solution_pdf(filename):
+        from tasks import process_solution_program_task
+        safe_filename = secure_filename(filename)
+        base_name = os.path.splitext(safe_filename)[0]
+        process_solution_program_task.delay(base_name)
+        return redirect(url_for('processing_solution', filename=safe_filename.replace(".pdf","_solution.pdf")))
+    @app.route('/solution/<filename>')
+    def solution(filename):
+        return render_template("solution_pdf.html", filename=filename)
+    @app.route("/check_solution/<filename>")
+    def check_solution(filename):
+        solution_pdf_file = secure_filename(filename)
+        pdf_path = os.path.join(app.config['PDF_FOLDER'], solution_pdf_file)
+        if os.path.exists(pdf_path):
+            return jsonify({
+                "ready": True,
+                "url": url_for('solution', filename=f'{solution_pdf_file}')
+            })
+        else:
+            return jsonify({"ready": False})
+
+    return app
+
+
+# --- Main (so you can still run via python app.py) ---
+if __name__ == '__main__':
+    # Create the Flask app and DB
+    flask_app = create_app()
+    with flask_app.app_context():
+        db.create_all()
+
+    # Start the dev server
+    flask_app.run(debug=True)

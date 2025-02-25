@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<style>
+  /* Heading styling */
+  h1 {
+    text-align: center;
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    color: #333;
+  }
+
+  /* PDF container styling */
+  .pdf-container {
+    display: block;
+    width: 90%;
+    height: 600px;
+    margin: 0 auto;
+    border: 1px solid #ddd;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    border-radius: 5px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Generated PDF Preview</h1>
+<iframe 
+  class="pdf-container"
+  src="{{ url_for('static', filename='pdfs/' + filename) }}"
+></iframe>
+{% endblock %}
