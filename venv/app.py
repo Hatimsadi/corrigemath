@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 import os
 import logging
 from werkzeug.utils import secure_filename
+import subprocess
 
 db = SQLAlchemy()
 
@@ -159,6 +160,56 @@ def create_app():
             filename,
             as_attachment=True
         )
+
+    @app.route("/validate/<filename>", methods=["GET"])
+    def validate(filename):
+        """
+        Read the generated LaTeX code for the given file and show it for user validation/editing.
+        The .tex file is assumed to be stored in the TEX_FOLDER.
+        """
+        tex_filename = os.path.splitext(filename)[0] + ".tex"
+        tex_path = os.path.join(app.config['TEX_FOLDER'], tex_filename)
+        if not os.path.exists(tex_path):
+            flash("LaTeX file not found for validation.")
+            return redirect(url_for('home'))
+        with open(tex_path, "r") as f:
+            latex_code = f.read()
+        return render_template("validate.html", filename=filename, latex_code=latex_code)
+
+    @app.route("/compile_tex/<filename>", methods=["POST"])
+    def compile_tex(filename):
+        """
+        Receive the edited LaTeX code from the validation page, write it to the .tex file,
+        run pdflatex to compile it, and redirect to the PDF display page.
+        """
+        edited_code = request.form.get("latex_code")
+        if not edited_code:
+            flash("No LaTeX code submitted.")
+            return redirect(url_for('validate', filename=filename))
+        
+        tex_filename = os.path.splitext(filename)[0] + ".tex"
+        tex_path = os.path.join(app.config['TEX_FOLDER'], tex_filename)
+        # Write the edited LaTeX code back to the file
+        with open(tex_path, "w") as f:
+            f.write(edited_code)
+        try:
+            # Run pdflatex in the TEX_FOLDER
+            subprocess.run(["pdflatex", "-interaction=nonstopmode", tex_filename],
+                        cwd=app.config['TEX_FOLDER'], check=True)
+            # Move generated PDF to PDF_FOLDER
+            generated_pdf = os.path.splitext(tex_filename)[0] + ".pdf"
+            src_pdf = os.path.join(app.config['TEX_FOLDER'], generated_pdf)
+            dest_pdf = os.path.join(app.config['PDF_FOLDER'], generated_pdf)
+            os.rename(src_pdf, dest_pdf)
+            # Optionally, remove aux/log files
+            for ext in [".aux", ".log"]:
+                aux_file = os.path.join(app.config['TEX_FOLDER'], f"{os.path.splitext(tex_filename)[0]}{ext}")
+                if os.path.exists(aux_file):
+                    os.remove(aux_file)
+            return redirect(url_for('display_pdf', filename=generated_pdf))
+        except subprocess.CalledProcessError as e:
+            flash("Error compiling LaTeX. Please check your code.")
+            return redirect(url_for('validate', filename=filename))
 
     @app.route("/processing_solution/<filename>")
     def processing_solution(filename):

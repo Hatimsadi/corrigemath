@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='logo.ico') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     {% block styles %}{% endblock %}
     <title>{% block title %}CorrigeMath{% endblock %}</title>
@@ -139,28 +140,60 @@
                 padding: 0 10px;
             }
         }
+        header .logo {
+            max-height: 50px;
+            margin-right: 15px;
+        }
+        .corrigemath-title a {
+    font-size: 3rem; /* Increase size */
+    font-weight: bold; /* Make it bold */
+    color: #ffd700; /* Gold color */
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.8), 
+                 0 0 20px rgba(255, 215, 0, 0.6), 
+                 0 0 30px rgba(255, 215, 0, 0.4); /* Glowing effect */
+    font-family: 'Poppins', sans-serif; /* Stylish font */
+    transition: all 0.3s ease-in-out; /* Smooth hover effect */
+}
+
+.corrigemath-title a:hover {
+    color: #fff; /* Change color on hover */
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.9), 
+                 0 0 25px rgba(255, 255, 255, 0.7); /* More intense glow */
+    transform: scale(1.05); /* Slight zoom */
+}
+
     </style>
 </head>
 <body>
     <header>
-        <div class="container">
-            <div id="branding">
-                <h1><a href="{{ url_for('home') }}">CorrigeMath</a></h1>
+        <div class="container d-flex justify-content-between align-items-center">
+            <!-- Left: Logo -->
+            <div class="d-flex align-items-center">
+                <img src="{{ url_for('static', filename='logo.ico') }}" alt="CorrigeMath Logo" class="logo" style="max-height: 50px;">
             </div>
+    
+            <!-- Center: Styled Title -->
+            <div class="flex-grow-1 text-center">
+                <h1 class="corrigemath-title m-0">
+                    <a href="{{ url_for('home') }}" class="text-decoration-none">CorrigeMath</a>
+                </h1>
+            </div>
+    
+            <!-- Right: Navigation Menu -->
             <nav>
-                <ul>
-                    <li><a href="{{url_for('home')}}" title="∑ Home">Accueil</a></li>
-                    <li><a href="#" title="ℹ About">À Propos</a></li>
+                <ul class="d-flex list-unstyled m-0">
+                    <li class="px-3"><a href="#" title="ℹ About">À Propos</a></li>
                     {% if not user %}
-                    <li><a href="{{ url_for('login') }}" title="→ Login">Se Connecter</a></li>
+                    <li class="px-3"><a href="{{ url_for('login') }}" title="→ Login">Se Connecter</a></li>
                     {% else %}
-                    <li><a href="{{ url_for('logout') }}" title="← Logout">Se Déconnecter</a></li>
+                    <li class="px-3"><a href="{{ url_for('logout') }}" title="← Logout">Se Déconnecter</a></li>
                     {% endif %}
-                    <li><a href="#" title="✉ Contact">Contact</a></li>
                 </ul>
             </nav>
         </div>
     </header>
+    
+    
     {% with messages = get_flashed_messages() %}
     {% if messages %}
         {% for message in messages %}
@@ -174,7 +207,8 @@
     </div>
 
     <footer>
-        <p>CorrigeMath &copy; 2023</p>
+        <p>CorrigeMath &copy; 2025</p>
+        <img src="{{ url_for('static', filename='logo.ico') }}" alt="CorrigeMath Logo">
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 </body>
