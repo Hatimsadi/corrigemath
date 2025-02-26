@@ -10,59 +10,98 @@
 \usepackage[T1]{fontenc}
 \begin{document}
 
-\section*{Examen de Mathématiques – Niveau 1ère (Évaluation 1)}
+\title{Examen de Mathématiques – Niveau 1ère (Évaluation 1)}
+\maketitle
 
-\subsection*{Exercice 1 : Fonction et Dérivée}
+\section*{Exercice 1 : Fonction et Dérivée}
 Soit $f(x) = x^3 - 3x^2 + 2x$. \\
-\textbf{Questions :}
+Questions :
 \begin{enumerate}
-    \item a) Calculer $f'(x)$.
-    \item b) Étudier les variations de $f$.
-    \item c) Résoudre $f(x) = 0$.
+    \item[a)] Calculer $f'(x)$.
+    \item[b)] Étudier les variations de $f$.
+    \item[c)] Résoudre $f(x) = 0$.
+\end{enumerate}
+Réponses de l’élève :
+\begin{enumerate}
+    \item[a)] $f'(x) = 3x^2 - 6x + 2$. \\
+    \textbf{Correction :} Réponse correcte.\\
+    \textbf{Note : 1/1}
+    
+    \item[b)] $f$ est décroissante sur $[0,1]$ et croissante sur $[1,+\infty[$ (approximation). \\
+    \textbf{Correction :} Calculons les variations de $f$ en déterminant le signe de $f'(x) = 3x^2 - 6x + 2$. Résolvons $f'(x) = 0$ :
+    \[
+    3x^2 - 6x + 2 = 0 \quad \Rightarrow \quad x = \frac{6 \pm \sqrt{(-6)^2 - 4 \times 3 \times 2}}{2 \times 3} = \frac{6 \pm \sqrt{12}}{6} = \frac{6 \pm 2\sqrt{3}}{6} = 1 \pm \frac{\sqrt{3}}{3}.
+    \]
+    $f'(x)$ change de signe à ces points : $1 - \frac{\sqrt{3}}{3}$ et $1 + \frac{\sqrt{3}}{3}$. Par analyse du signe de $f'(x)$, $f$ est croissante sur $]-\infty, 1 - \frac{\sqrt{3}}{3}] \cup [1 + \frac{\sqrt{3}}{3}, +\infty[$ et décroissante sur $[1 - \frac{\sqrt{3}}{3}, 1 + \frac{\sqrt{3}}{3}]$.\\
+    \textbf{Correction nécessaire : la justification et les points exacts de changement de variations manquent.} \\
+    \textbf{Note : 0.5/1}
+    
+    \item[c)] $f(x) = x(x-1)(x-2) = 0$ donc $x = 0, 1, 2$. \\
+    \textbf{Correction :} Réponse correcte.\\
+    \textbf{Note : 1/1}
 \end{enumerate}
 
-\textbf{Réponses de l’élève :}
-\begin{enumerate}
-    \item a) $f'(x) = 3x^2 - 6x + 2$. -- \textbf{Correction :} Correct. \textbf{(Note: 1/1)}
-    \item b) $f$ est décroissante sur $[0,1]$ et croissante sur $[1,+\infty[$ (approximation). \\
-    -- \textbf{Correction :} $f(x)$ est décroissante sur $[0,1]$ et croissante sur $[1,2]$. Incomplète, déterminer les variations exactes. \textbf{(Note: 0.5/1)}
-    \item c) $f(x) = x(x-1)(x-2) = 0$ donc $x = 0, 1, 2$. -- \textbf{Correction :} Correct. \textbf{(Note: 1/1)}
-\end{enumerate}
+\section*{Exercice 2 : Équation du Second Degré}
+Résoudre $x^2 - 5x + 6 = 0$. \\ 
+Réponse de l’élève : 
+$x = 2$ ou $x = 3$. \\
+\textbf{Correction :} Réponse correcte. Les racines peuvent être trouvées par factorisation eu égard à $x^2 - 5x + 6 = (x - 2)(x - 3) = 0$ donc $x = 2$ ou $x = 3$. \\
+\textbf{Note : 1/1}
 
-\subsection*{Exercice 2 : Équation du Second Degré}
-Résoudre $x^2 - 5x + 6 = 0$. \\
-\textbf{Réponse de l’élève :} $x = 2$ ou $x = 3$. -- \textbf{Correction :} Correct. \textbf{(Note: 1/1)}
-
-\subsection*{Exercice 3 : Géométrie Analytique}
+\section*{Exercice 3 : Géométrie Analytique}
 Soit le triangle ABC avec $A(0,0)$, $B(4,0)$ et $C(2,3)$. \\
-\textbf{Questions :}
+Questions :
 \begin{enumerate}
-    \item a) Montrer que ABC est isocèle.
-    \item b) Calculer son aire.
-    \item c) Donner les coordonnées du milieu de $[BC]$.
+    \item[a)] Montrer que ABC est isocèle.
+    \item[b)] Calculer son aire.
+    \item[c)] Donner les coordonnées du milieu de $[BC]$.
+\end{enumerate}
+Réponses de l’élève :
+\begin{enumerate}
+    \item[a)] $AB = 4$ et $AC \approx \sqrt{13}$ ; $BC \approx \sqrt{13}$ donc isocèle. \\
+    \textbf{Correction :} $AB = 4$, $AC = \sqrt{(2-0)^2 + (3-0)^2} = \sqrt{13}$ et $BC = \sqrt{(2-4)^2 + (3-0)^2} = \sqrt{13}$. ABC est isocèle car $AC = BC$. \\
+    \textbf{Correction nécessaire : la justification est correcte mais il manquait des calculs complets.}\\
+    \textbf{Note : 1/1}
+    
+    \item[b)] Aire $\approx 6$. \\
+    \textbf{Correction :} L'aire du triangle est donnée par $\text{Aire} = \frac{1}{2} \left| x_1(y_2-y_3) + x_2(y_3-y_1) + x_3(y_1-y_2) \right|$.\\
+    Appliquons la formule :
+    \[
+    \text{Aire} = \frac{1}{2} \left| 0(0-3) + 4(3-0) + 2(0-0) \right| = \frac{1}{2} \left| 0 + 12 + 0 \right| = \frac{1}{2} \times 12 = 6.
+    \]
+    Réponse correcte. \\
+    \textbf{Note : 1/1}
+    
+    \item[c)] Milieu de $BC = (3, 1.5)$. \\
+    \textbf{Correction :} Le milieu de $BC$ est $\left(\frac{2+4}{2}, \frac{3+0}{2}\right) = (3, 1.5)$.\\
+    Réponse correcte. \\
+    \textbf{Note : 1/1}
 \end{enumerate}
 
-\textbf{Réponses de l’élève :}
-\begin{enumerate}
-    \item a) $AB = 4$ et $AC \approx \sqrt{13}$ ; $BC \approx \sqrt{13}$ donc isocèle. -- \textbf{Correction :} Correct. \textbf{(Note: 1/1)}
-    \item b) Aire $\approx 6$. -- \textbf{Correction :} L’aire est $\frac{1}{2} \times 4 \times 3 = 6$. Correct. \textbf{(Note: 1/1)}
-    \item c) Milieu de $BC = (3, 1.5)$. -- \textbf{Correction :} Correct. \textbf{(Note: 1/1)}
-\end{enumerate}
-
-\subsection*{Exercice 4 : Probabilités}
+\section*{Exercice 4 : Probabilités}
 Dans un sac, il y a 4 boules rouges et 6 boules bleues. \\
-\textbf{Questions :}
+Questions :
 \begin{enumerate}
-    \item a) Calculer $P(\text{rouge})$.
-    \item b) Avec remise, calculer $P(2 \text{ rouges})$.
+    \item[a)] Calculer $P(\text{rouge})$.
+    \item[b)] Avec remise, calculer $P(2 \text{ rouges})$.
+\end{enumerate}
+Réponses de l’élève :
+\begin{enumerate}
+    \item[a)] $P(\text{rouge}) = \frac{4}{10} = 0.3$. \\
+    \textbf{Correction :} $P(\text{rouge}) = \frac{4}{10} = 0.4$. Corrigez l'erreur de calcul.\\
+    \textbf{Note : 0.5/1}
+    
+    \item[b)] $0.4 \times 0.4 = 0.2$. \\
+    \textbf{Correction :} En supposant une remise, $P(2 \text{ rouges}) = 0.4 \times 0.4 = 0.16$. Veuillez vérifier votre multiplication. \\
+    \textbf{Note : 0/1}
 \end{enumerate}
 
-\textbf{Réponses de l’élève :}
-\begin{enumerate}
-    \item a) $P(\text{rouge}) = \frac{4}{10} = 0.4$. -- \textbf{Correction :} Correct. \textbf{(Note: 1/1)}
-    \item b) $0.4 \times 0.4 = 0.16$. -- \textbf{Correction :} Correct. \textbf{(Note: 1/1)}
-\end{enumerate}
-
-\textbf{Note totale :} 9.5/10
-
+\section*{Note Finale}
+\begin{itemize}
+    \item Exercice 1 : 2.5/3
+    \item Exercice 2 : 1/1
+    \item Exercice 3 : 3/3
+    \item Exercice 4 : 0.5/2
+\end{itemize}
+\textbf{Note Totale : 7/9}
 \end{document}

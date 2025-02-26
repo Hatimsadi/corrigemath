@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>Validate and Edit LaTeX Code for {{ filename }}</h2>
+  <form action="{{ url_for('compile_tex', filename=filename) }}" method="post">
+    <textarea name="latex_code" rows="20" cols="80" style="width:100%;">{{ latex_code }}</textarea>
+    <br>
+    <input type="submit" value="Compile to PDF">
+  </form>
+  <p>Please review and, if needed, edit the LaTeX code before compiling.</p>
+{% endblock %}
