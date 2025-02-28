@@ -80,7 +80,7 @@ def _clean_latex_code(code):
 
 def image_to_pdf(image_path):
     try:
-        output_path = "static/pdfs/" + os.path.basename(image_path).replace(".pdf", ".pdf")
+        output_path = "static/pdfs/" + os.path.basename(image_path)
         os.makedirs("static/pdfs", exist_ok=True)
         os.makedirs("static/tex", exist_ok=True)
         
@@ -90,11 +90,9 @@ def image_to_pdf(image_path):
         with open(tex_file, "w") as f:
             f.write(latex_code)
         
-        subprocess.run(["pdflatex", "-interaction=nonstopmode", os.path.basename(tex_file)], cwd="static/tex", check=True)
-        generated_pdf = os.path.splitext(os.path.basename(tex_file))[0] + ".pdf"
-        os.rename(os.path.join("static/tex", generated_pdf), output_path)
+        subprocess.run(["pdflatex", "-interaction=nonstopmode","-output-directory=../pdfs", os.path.basename(tex_file)], cwd="static/tex")
         for ext in [".log", ".aux"]:
-            aux_file = os.path.join("static/tex", f"{os.path.splitext(os.path.basename(tex_file))[0]}{ext}")
+            aux_file = os.path.join("static/pdfs", f"{os.path.splitext(os.path.basename(tex_file))[0]}{ext}")
             if os.path.exists(aux_file):
                 os.remove(aux_file)
         print(f"PDF generated: {output_path}")
@@ -121,12 +119,14 @@ def latex_solution(filename):
                      "Give a grade for every question and a grade for all. "
                      "It is in French so the answer should be in French. "
                      "If the answer is incomplete or unjustified, give the missing part and don't give the full grade "
+                     "The grade should be /20."
+                     "Your answer should be a list of two elements , the first one is the grade and the seconde one is the solution"
+                     "write in color red to the correction you added"
                      "And provide the solution in LaTeX format, don't add any other text:\n\n" + latex_content
                  )}
             ]
         )
         solution = response.choices[0].message.content
-        print("\n[latex_solution] Received solution from API (first 300 chars):")
         print(solution[:300])
         solution = _clean_latex_code(solution)
         solution_filename = f"static/tex/{os.path.basename(filename).replace('.tex', '_solution.tex')}"
@@ -149,18 +149,15 @@ def latex_to_pdf(tex_file):
         print(f"[latex_to_pdf] Running pdflatex on: {tex_file_basename} in directory: {tex_dir}")
         
         result = subprocess.run(
-            ["pdflatex", "-interaction=nonstopmode", tex_file_basename],
-            cwd=tex_dir,
-            capture_output=True,
-            text=True
+            ["pdflatex", "-interaction=nonstopmode","-output-directory=../pdfs", tex_file_basename],
+            cwd=tex_dir
         )
         pdf_name = os.path.splitext(tex_file_basename)[0] + ".pdf"
         src_pdf = os.path.join(tex_dir, pdf_name)
-        dest_pdf = os.path.join(output_dir, pdf_name)
-        os.rename(src_pdf, dest_pdf)
-        
+        dest_pdf = os.path.join(output_dir, pdf_name)   
+        os.rename(src_pdf, dest_pdf)     
         for ext in [".aux", ".log"]:
-            aux_file = os.path.join(tex_dir, f"{os.path.splitext(pdf_name)[0]}{ext}")
+            aux_file = os.path.join(output_dir, f"{os.path.splitext(pdf_name)[0]}{ext}")
             if os.path.exists(aux_file):
                 os.remove(aux_file)
                 

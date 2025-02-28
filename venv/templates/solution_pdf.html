@@ -20,11 +20,18 @@
     box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     border-radius: 5px;
   }
+  .grade {
+    text-align: center;
+    font-size: 1.5rem;
+    margin-top: 20px;
+    color: #333;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
 <h1>Generated PDF Preview</h1>
+<div class="grade">Grade: {{ grade }}</div>
 <iframe 
   class="pdf-container"
   src="{{ url_for('static', filename='pdfs/' + filename) }}"

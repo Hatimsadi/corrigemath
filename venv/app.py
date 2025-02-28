@@ -4,9 +4,14 @@ import os
 import logging
 from werkzeug.utils import secure_filename
 import subprocess
-
+from redis import Redis
+from config import Config
 db = SQLAlchemy()
-
+redis_client=Redis(
+    host=Config.REDIS_HOST,
+    port=Config.REDIS_PORT,
+    db=Config.REDIS_DB
+)
 def create_app():
     """Factory to create the Flask app."""
     app = Flask(__name__)
@@ -28,10 +33,6 @@ def create_app():
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     os.makedirs(app.config['PDF_FOLDER'], exist_ok=True)
     os.makedirs(app.config['TEX_FOLDER'], exist_ok=True)
-
-    # Suppress unnecessary werkzeug logs
-    log = logging.getLogger('werkzeug')
-    log.setLevel(logging.ERROR)
 
     # --- DB Model ---
     class Users(db.Model):
@@ -152,6 +153,19 @@ def create_app():
             return jsonify({"ready": False})
         else:
             return jsonify({"ready": False, "url": url_for('home')})
+
+    @app.route('/get_grade/<base_name>')
+    def get_grade(base_name):
+        grade = redis_client.hget(f"grades:{base_name}","grade")
+        pdf_filename=redis_client.hget(f"grades:{base_name}","pdf_filename")
+        if grade and pdf_filename:
+            return jsonify({
+                "ready": True, 
+                "grade": grade.decode(), 
+                "pdf_filename": pdf_filename.decode()
+            })
+        else:
+            return jsonify({"ready": False})
 
     @app.route('/download/<filename>')
     def download_pdf(filename):

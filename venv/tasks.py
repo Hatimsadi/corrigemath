@@ -2,7 +2,13 @@ import os
 import time
 from celery_app import celery, flask_app
 from file_to_solution import image_to_pdf, latex_solution, latex_to_pdf
-
+from redis import Redis
+from config import Config 
+redis_client = Redis(
+    host=Config.REDIS_HOST,
+    port=Config.REDIS_PORT,
+    db=Config.REDIS_DB
+)
 @celery.task
 def process_file_task(filename):
     """Convert image to PDF and remove the original file."""
@@ -37,8 +43,13 @@ def process_solution_program_task(base_name):
                 return
             
             # Convert solution .tex file to PDF
-            pdf_result = latex_to_pdf(solution_tex)
-            print(f"[tasks] PDF conversion result: {pdf_result}")
+            grade = latex_to_pdf(solution_tex)
+            pdf_filename = f"{base_name}_solution.pdf"
+            redis_client.hset(f"grades:{base_name}", "grade", str(grade))
+            redis_client.hset(f"grades:{base_name}", "pdf_filename", pdf_filename)
+            redis_client.expire(f"grades:{base_name}", 3600)
+
+            print(f"[tasks] PDF conversion result: {grade}")
             
         except Exception as e:
             flask_app.logger.error(f"Error in process_solution_program_task: {e}", exc_info=True)
