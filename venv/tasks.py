@@ -34,16 +34,11 @@ def process_solution_program_task(base_name):
             print(f"[tasks] Processing solution for: {tex_path}")
             
             # Generate solution .tex file
-            solution_tex = latex_solution(tex_path)
-            print(f"[tasks] Returned solution file path: {solution_tex}")
-            
-            # Check if the file exists
-            if not os.path.exists(solution_tex):
-                flask_app.logger.error("Solution file was not created: " + solution_tex)
-                return
+            grade = latex_solution(tex_path)   
+            print(f"\n {grade} \n")         
             
             # Convert solution .tex file to PDF
-            grade = latex_to_pdf(solution_tex)
+            latex_to_pdf(os.path.join(flask_app.config['TEX_FOLDER'], f"{base_name}_solution.tex"))
             pdf_filename = f"{base_name}_solution.pdf"
             redis_client.hset(f"grades:{base_name}", "grade", str(grade))
             redis_client.hset(f"grades:{base_name}", "pdf_filename", pdf_filename)
@@ -53,3 +48,4 @@ def process_solution_program_task(base_name):
             
         except Exception as e:
             flask_app.logger.error(f"Error in process_solution_program_task: {e}", exc_info=True)
+            

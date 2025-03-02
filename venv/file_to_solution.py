@@ -110,7 +110,7 @@ def latex_solution(filename):
             latex_content = file.read()
         print("\n[latex_solution] Read original LaTeX content from:", filename)
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4.5-preview",
             messages=[
                 {"role": "user", 
                  "content": (
@@ -120,20 +120,28 @@ def latex_solution(filename):
                      "It is in French so the answer should be in French. "
                      "If the answer is incomplete or unjustified, give the missing part and don't give the full grade "
                      "The grade should be /20."
-                     "Your answer should be a list of two elements , the first one is the grade and the seconde one is the solution"
+                     "Give a scale of 20 for the whole copy. "
+                     "Give the grade for every question and the grade for all. "
+                     "Remove points if the student is wrong or if the answer is incomplete or if the answer is not justified."
+                     "If the answer is incorrect , give 0 and give the corrected answer"
+                     "Be more severe in your correction."
+                     "If they don't give justification, remove points."
                      "write in color red to the correction you added"
                      "And provide the solution in LaTeX format, don't add any other text:\n\n" + latex_content
                  )}
             ]
         )
         solution = response.choices[0].message.content
-        print(solution[:300])
         solution = _clean_latex_code(solution)
+        pattern = r'(\d+\.?\d*)\s*/\s*20'
+        match=re.search(pattern,solution)
+        if match:
+            grade=match.group(0)
         solution_filename = f"static/tex/{os.path.basename(filename).replace('.tex', '_solution.tex')}"
         with open(solution_filename, 'w') as f:
             f.write(solution)
         print(f"[latex_solution] Written solution file: {solution_filename}")
-        return solution_filename
+        return grade
     except Exception as e:
         print(f"[latex_solution] Error: {e}")
         return f"Error: {str(e)}"
@@ -155,7 +163,6 @@ def latex_to_pdf(tex_file):
         pdf_name = os.path.splitext(tex_file_basename)[0] + ".pdf"
         src_pdf = os.path.join(tex_dir, pdf_name)
         dest_pdf = os.path.join(output_dir, pdf_name)   
-        os.rename(src_pdf, dest_pdf)     
         for ext in [".aux", ".log"]:
             aux_file = os.path.join(output_dir, f"{os.path.splitext(pdf_name)[0]}{ext}")
             if os.path.exists(aux_file):

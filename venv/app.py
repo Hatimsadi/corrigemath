@@ -238,7 +238,11 @@ def create_app():
         return redirect(url_for('processing_solution', filename=safe_filename.replace(".pdf","_solution.pdf")))
     @app.route('/solution/<filename>')
     def solution(filename):
-        return render_template("solution_pdf.html", filename=filename)
+        base_name=os.path.splitext(filename)[0].replace("_solution","")
+        grade = redis_client.hget(f"grades:{base_name}", "grade")
+        grade_value = grade.decode() if grade else "Not available"
+
+        return render_template("solution_pdf.html", filename=filename,grade=grade_value)
     @app.route("/check_solution/<filename>")
     def check_solution(filename):
         solution_pdf_file = secure_filename(filename)
