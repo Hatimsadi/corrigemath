@@ -11,41 +11,63 @@ redis_client = Redis(
 )
 @celery.task
 def process_file_task(filename):
-    """Convert image to PDF and remove the original file."""
+    """Convert image to PDF and track status in Redis."""
     with flask_app.app_context():
+        redis_key = f"file:{filename}"
         try:
-            pdf_filename = f"{os.path.splitext(filename)[0]}.pdf"
-            # Convert image to PDF
             upload_path = os.path.join(flask_app.config['UPLOAD_FOLDER'], filename)
-            image_to_pdf(upload_path)
-
-            # Remove the original uploaded file
+            
+            # Update Redis status to "processing"
+            redis_client.hset(redis_key, "status", "processing")
+            
+            # Convert image to PDF
+            output_pdf = image_to_pdf(upload_path)
+            pdf_filename = os.path.basename(output_pdf)
+            
+            # Update Redis with success status and PDF name
+            redis_client.hset(redis_key, "status", "completed")
+            redis_client.hset(redis_key, "pdf_filename", pdf_filename)
+            
+            # Remove original file
             os.remove(upload_path)
+            
         except Exception as e:
-            print(f"Error in process_file_task: {e}")
-
+            # Log error and update Redis
+            error_msg = f"Error processing {filename}: {str(e)}"
+            print(error_msg)
+            redis_client.hset(redis_key, "status", "failed")
+            redis_client.hset(redis_key, "error", error_msg)
+            
+        finally:
+            # Auto-clean Redis data after 1 hour
+            redis_client.expire(redis_key, 3600)
 @celery.task
 def process_solution_program_task(base_name):
-    """Generate a solution PDF from a LaTeX file."""
+    """Generate solution PDF with Redis status tracking"""
     with flask_app.app_context():
+        redis_key = f"solution:{base_name}"
         try:
-            tex_filename = f"{base_name}.tex"
-            tex_path = os.path.join(flask_app.config['TEX_FOLDER'], tex_filename)
-            print(f"[tasks] Processing solution for: {tex_path}")
+            redis_client.hset(redis_key, "status", "processing")
             
-            # Generate solution .tex file
-            grade = latex_solution(tex_path)   
-            print(f"\n {grade} \n")         
+            tex_path = os.path.join(flask_app.config['TEX_FOLDER'], f"{base_name}.tex")
+            grade = latex_solution(tex_path)
             
-            # Convert solution .tex file to PDF
-            latex_to_pdf(os.path.join(flask_app.config['TEX_FOLDER'], f"{base_name}_solution.tex"))
+            solution_tex = os.path.join(flask_app.config['TEX_FOLDER'], f"{base_name}_solution.tex")
+            latex_to_pdf(solution_tex)
+            
             pdf_filename = f"{base_name}_solution.pdf"
-            redis_client.hset(f"grades:{base_name}", "grade", str(grade))
-            redis_client.hset(f"grades:{base_name}", "pdf_filename", pdf_filename)
-            redis_client.expire(f"grades:{base_name}", 3600)
-
-            print(f"[tasks] PDF conversion result: {grade}")
+            redis_client.hmset(redis_key, {
+                "status": "completed",
+                "grade": str(grade),
+                "pdf_filename": pdf_filename
+            })
             
         except Exception as e:
-            flask_app.logger.error(f"Error in process_solution_program_task: {e}", exc_info=True)
+            redis_client.hmset(redis_key, {
+                "status": "failed",
+                "error": str(e)
+            })
+            flask_app.logger.error(f"Solution error for {base_name}: {e}")
+        finally:
+            redis_client.expire(redis_key, 3600)
             

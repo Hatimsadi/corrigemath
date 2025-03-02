@@ -3,6 +3,7 @@ from app import create_app
 
 def create_celery_app(app=None):
     """Attach Celery to the given Flask app."""
+    from app import create_app
     app = app or create_app()
     celery = Celery(
         app.import_name,

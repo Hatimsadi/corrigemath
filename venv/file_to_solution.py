@@ -1,13 +1,16 @@
 from openai import OpenAI
 import base64
 import json
+from dotenv import load_dotenv
 import subprocess
 import os
 import re
 import PyPDF2
 from celery_app import flask_app
+load_dotenv()  
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 client = OpenAI(
-  api_key="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"
+  api_key=OPENAI_API_KEY
 )
 
 def encode_image(image_path):
@@ -110,7 +113,7 @@ def latex_solution(filename):
             latex_content = file.read()
         print("\n[latex_solution] Read original LaTeX content from:", filename)
         response = client.chat.completions.create(
-            model="gpt-4.5-preview",
+            model="gpt-4o",
             messages=[
                 {"role": "user", 
                  "content": (

@@ -109,51 +109,86 @@ def create_app():
 
     @app.route("/upload", methods=["POST", "GET"])
     def upload():
-        from tasks import process_file_task  # Import here to avoid circular import
+        from tasks import process_file_task
         if request.method == "POST":
             if 'file' not in request.files:
                 flash('No file part')
                 return redirect(url_for('upload'))
-            files = request.files.getlist('file')  
+            files = request.files.getlist('file')
+            saved_filenames = []
 
-            if not files or files[0].filename == '':
-                flash('No selected file')
-                return redirect(url_for('upload'))
-            saved_files = []
             for file in files:
-                if file and allowed_file(file.filename):
+                if file and file.filename != '' and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                     try:
-                        filename = secure_filename(file.filename)
-                        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                        # Start the file processing task
+                        file.save(file_path)
                         process_file_task.delay(filename)
-                        return redirect(url_for('processing', filename=filename))
+                        saved_filenames.append(filename)
                     except Exception as e:
-                        flash(str(e))
-            return redirect(url_for('upload'))
+                        flash(f"Error saving {filename}: {str(e)}")
+
+            if saved_filenames:
+        # Store uploaded files in session
+                session['uploaded_files'] = saved_filenames
+                return redirect(url_for('processing', filenames=','.join(saved_filenames)))
+            else:
+                flash('No valid files processed')
+                return redirect(url_for('upload'))
         return render_template('upload.html')
-
-    @app.route("/processing/<filename>")
-    def processing(filename):
-        return render_template("processing.html", filename=filename)
-
+    @app.route("/processing/<filenames>")
+    def processing(filenames):
+        filename_list = filenames.split(',')
+        return render_template("processing.html", filenames=filename_list)
     @app.route("/display_pdf/<filename>")
     def display_pdf(filename):
-        return render_template("display_pdf.html", pdf_filename=filename)
-
+        file_list = session.get('uploaded_files', [])
+        try:
+            current_index = file_list.index(filename)
+        except ValueError:
+            current_index = -1
+        
+        # Calculate indices with 2-file steps
+        prev_index = current_index - 1
+        next_index = current_index + 1
+        
+        prev_file = file_list[prev_index] if prev_index >= 0 else None
+        next_file = file_list[next_index] if next_index < len(file_list) else None
+        
+        return render_template("display_pdf.html",
+                            pdf_filename=filename,
+                            prev_file=prev_file,
+                            next_file=next_file,
+                            file_index=current_index + 1,
+                            total_files=len(file_list))  
     @app.route("/check_file/<filename>")
     def check_file(filename):
+        redis_key = f"file:{filename}"
+        file_data = redis_client.hgetall(redis_key)
+        
+        if file_data:
+            status = file_data.get(b"status", b"").decode()
+            if status == "completed":
+                pdf_filename = file_data.get(b"pdf_filename", b"").decode()
+                return jsonify({
+                    "ready": True,
+                    "url": url_for('display_pdf', filename=pdf_filename)
+                })
+            elif status == "failed":
+                error = file_data.get(b"error", b"Unknown error").decode()
+                return jsonify({"ready": False, "error": error})
+        
+        # Fallback: Check filesystem if Redis data is missing
+        original_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         pdf_filename = f"{os.path.splitext(filename)[0]}.pdf"
         pdf_path = os.path.join(app.config['PDF_FOLDER'], pdf_filename)
-        original_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-
+        
         if os.path.exists(pdf_path):
             return jsonify({"ready": True, "url": url_for('display_pdf', filename=pdf_filename)})
         elif os.path.exists(original_path):
             return jsonify({"ready": False})
         else:
-            return jsonify({"ready": False, "url": url_for('home')})
-
+            return jsonify({"ready": False, "error": "File not found"})
     @app.route('/get_grade/<base_name>')
     def get_grade(base_name):
         grade = redis_client.hget(f"grades:{base_name}","grade")
@@ -177,10 +212,6 @@ def create_app():
 
     @app.route("/validate/<filename>", methods=["GET"])
     def validate(filename):
-        """
-        Read the generated LaTeX code for the given file and show it for user validation/editing.
-        The .tex file is assumed to be stored in the TEX_FOLDER.
-        """
         tex_filename = os.path.splitext(filename)[0] + ".tex"
         tex_path = os.path.join(app.config['TEX_FOLDER'], tex_filename)
         if not os.path.exists(tex_path):
@@ -238,11 +269,33 @@ def create_app():
         return redirect(url_for('processing_solution', filename=safe_filename.replace(".pdf","_solution.pdf")))
     @app.route('/solution/<filename>')
     def solution(filename):
-        base_name=os.path.splitext(filename)[0].replace("_solution","")
+        base_name = os.path.splitext(filename)[0].replace("_solution", "")
         grade = redis_client.hget(f"grades:{base_name}", "grade")
         grade_value = grade.decode() if grade else "Not available"
-
-        return render_template("solution_pdf.html", filename=filename,grade=grade_value)
+        
+        # Get solution files list
+        uploaded_files = session.get('uploaded_files', [])
+        solution_files = [f"{os.path.splitext(f)[0]}_solution.pdf" for f in uploaded_files]
+        
+        try:
+            current_index = solution_files.index(filename)
+        except ValueError:
+            current_index = -1
+        
+        # Calculate indices with 2-file steps
+        prev_index = current_index - 1
+        next_index = current_index + 1
+        
+        prev_file = solution_files[prev_index] if prev_index >= 0 else None
+        next_file = solution_files[next_index] if next_index < len(solution_files) else None
+        
+        return render_template("solution_pdf.html",
+                            filename=filename,
+                            grade=grade_value,
+                            prev_file=prev_file,
+                            next_file=next_file,
+                            file_index=current_index + 1,
+                            total_files=len(solution_files))    
     @app.route("/check_solution/<filename>")
     def check_solution(filename):
         solution_pdf_file = secure_filename(filename)
@@ -255,8 +308,44 @@ def create_app():
         else:
             return jsonify({"ready": False})
 
-    return app
+        
 
+    @app.route('/process_all_solutions', methods=['POST'])
+    def process_all_solutions():
+        """Trigger solution generation for all processed files"""
+        from tasks import process_solution_program_task
+        
+        # Get all base names from the TEX_FOLDER
+        tex_files = [f for f in os.listdir(app.config['TEX_FOLDER']) if f.endswith('.tex')]
+        base_names = [os.path.splitext(f)[0] for f in tex_files if '_solution' not in f]
+        
+        # Start solution tasks for all files
+        for base_name in base_names:
+            process_solution_program_task.delay(base_name)
+        
+        return jsonify({
+            "message": f"Started solution generation for {len(base_names)} files",
+            "files": base_names
+        })
+    @app.route('/check_all_solutions')
+    def check_all_solutions():
+        """Check status of all solution generations"""
+        tex_files = [f for f in os.listdir(app.config['TEX_FOLDER']) if f.endswith('.tex')]
+        base_names = [os.path.splitext(f)[0] for f in tex_files if '_solution' not in f]
+        
+        statuses = {}
+        for base_name in base_names:
+            redis_key = f"solution:{base_name}"
+            data = redis_client.hgetall(redis_key)
+            statuses[base_name] = {
+                "status": data.get(b"status", b"pending").decode(),
+                "grade": data.get(b"grade", b"").decode(),
+                "pdf_filename": data.get(b"pdf_filename", b"").decode(),
+                "error": data.get(b"error", b"").decode()
+            }
+        
+        return jsonify(statuses)
+    return app
 
 # --- Main (so you can still run via python app.py) ---
 if __name__ == '__main__':

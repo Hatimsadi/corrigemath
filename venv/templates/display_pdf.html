@@ -2,7 +2,7 @@
 
 {% block styles %}
 <style>
-  /* Button Styling */
+  /* Existing styles */
   .button {
     display: inline-block;
     margin: 10px auto;
@@ -13,29 +13,14 @@
     transition: background-color 0.3s ease;
   }
 
-  .edit-btn {
-    background-color: #ffc107;
-    color: #000;
-  }
-  .edit-btn:hover {
-    background-color: #e0a800;
-  }
+  .edit-btn { background-color: #ffc107; color: #000; }
+  .edit-btn:hover { background-color: #e0a800; }
 
-  .download-btn {
-    background-color: #007bff;
-    color: #fff;
-  }
-  .download-btn:hover {
-    background-color: #0056b3;
-  }
+  .download-btn { background-color: #007bff; color: #fff; }
+  .download-btn:hover { background-color: #0056b3; }
 
-  .Confirmer {
-    background-color: #28a745;
-    color: #fff;
-  }
-  .Confirmer:hover {
-    background-color: #218838;
-  }
+  .Confirmer { background-color: #28a745; color: #fff; }
+  .Confirmer:hover { background-color: #218838; }
 
   .pdf-container {
     display: block;
@@ -45,20 +30,102 @@
     border: 2px solid #ccc;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
+
+  /* New solution generation styles */
+  .solution-btn {
+    background-color: #17a2b8;
+    color: white;
+    border: none;
+    cursor: pointer;
+  }
+
+  .status-container {
+    margin: 20px auto;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    max-width: 800px;
+  }
+
+  .solution-status {
+    padding: 10px;
+    margin: 5px 0;
+    background-color: white;
+    border-left: 4px solid #007bff;
+  }
+
+  .solution-status.completed { border-color: #28a745; }
+  .solution-status.failed { border-color: #dc3545; }
+
+  .spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spinner 0.75s linear infinite;
+  }
+
+  @keyframes spinner {
+    to { transform: rotate(360deg); }
+  }
+  .navigation-buttons {
+        display: flex;
+        justify-content: space-between;
+        margin: 20px 0;
+        padding: 0 10%;
+    }
+
+    .nav-btn {
+        background-color: #6c757d;
+        color: white;
+        min-width: 120px;
+    }
+
+    .file-counter {
+        color: #6c757d;
+        font-weight: bold;
+        align-self: center;
+    }
+
+    .button-group {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin: 20px 0;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<h1>Generated PDF Preview</h1>
+<h1>Prévisualition de PDF</h1>
+<div class="navigation-buttons">
+  {% if prev_file %}
+  <a href="{{ url_for('display_pdf', filename=prev_file) }}" class="button nav-btn">
+      &laquo; Previous 
+  </a>
+  {% endif %}
+  
+  <span class="file-counter">
+      {{ pdf_filename}}
+  </span>
 
-<div style="text-align: center;">
+  {% if next_file %}
+  <a href="{{ url_for('display_pdf', filename=next_file) }}" class="button nav-btn">
+      Next &raquo;
+  </a>
+  {% endif %}
+</div>
+<div style="text-align: center; display: flex; gap: 10px; justify-content: center;">
   <a href="{{ url_for('solution_pdf', filename=pdf_filename) }}" class="button Confirmer">
       Confirmer
   </a>
-</div>
 
-<!-- Edit Button -->
-<div style="text-align: center;">
+  <button id="generateAllSolutions" class="button solution-btn">
+      Generate All Solutions
+  </button>
+
   <a href="{{ url_for('validate', filename=pdf_filename.replace('.pdf', '')) }}" class="button edit-btn">
       Edit LaTeX
   </a>
@@ -75,4 +142,60 @@
   </a>
 </div>
 
+<div class="status-container">
+  <h3>Solution Generation Progress</h3>
+  <div id="solutionStatuses"></div>
+</div>
+
+<script>
+document.getElementById('generateAllSolutions').addEventListener('click', async () => {
+    const btn = document.getElementById('generateAllSolutions');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Starting...';
+    
+    try {
+        const response = await fetch('/process_all_solutions', {method: 'POST'});
+        const result = await response.json();
+        
+        // Start polling
+        const pollInterval = setInterval(async () => {
+            const statusResponse = await fetch('/check_all_solutions');
+            const statuses = await statusResponse.json();
+            
+            let html = '';
+            let completedCount = 0;
+            let totalFiles = Object.keys(statuses).length;
+
+            for (const [file, status] of Object.entries(statuses)) {
+                html += `
+                    <div class="solution-status ${status.status}">
+                        <strong>${file}</strong>
+                        <div>Status: ${status.status} ${status.status === 'processing' ? '<span class="spinner"></span>' : ''}</div>
+                        ${status.grade ? `<div>Grade: ${status.grade}</div>` : ''}
+                        ${status.pdf_filename ? 
+                            `<a href="/solution/${status.pdf_filename}" class="button download-btn" style="margin-top: 5px;">View Solution</a>` : ''}
+                        ${status.error ? `<div class="text-danger">Error: ${status.error}</div>` : ''}
+                    </div>
+                `;
+
+                if (status.status === 'completed' || status.status === 'failed') completedCount++;
+            }
+
+            document.getElementById('solutionStatuses').innerHTML = html;
+            btn.innerHTML = `Processing (${completedCount}/${totalFiles})`;
+
+            if (completedCount === totalFiles) {
+                clearInterval(pollInterval);
+                btn.disabled = false;
+                btn.innerHTML = 'Regenerate All Solutions';
+            }
+        }, 2000);
+    } catch (error) {
+        console.error('Error:', error);
+        btn.disabled = false;
+        btn.innerHTML = 'Generate All Solutions';
+        alert('Failed to start solution generation');
+    }
+});
+</script>
 {% endblock %}
