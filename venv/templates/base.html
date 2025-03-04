@@ -161,6 +161,9 @@
                  0 0 25px rgba(255, 255, 255, 0.7); /* More intense glow */
     transform: scale(1.05); /* Slight zoom */
 }
+.history-btn {
+    color: white;
+}
 
     </style>
 </head>
@@ -182,10 +185,12 @@
             <!-- Right: Navigation Menu -->
             <nav>
                 <ul class="d-flex list-unstyled m-0">
-                    <li class="px-3"><a href="#" title="ℹ About">À Propos</a></li>
                     {% if not user %}
                     <li class="px-3"><a href="{{ url_for('login') }}" title="→ Login">Se Connecter</a></li>
                     {% else %}
+                    <a href="{{ url_for('history') }}" class="button history-btn">
+                        Historique
+                    </a>
                     <li class="px-3"><a href="{{ url_for('logout') }}" title="← Logout">Se Déconnecter</a></li>
                     {% endif %}
                 </ul>

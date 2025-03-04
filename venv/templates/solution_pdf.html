@@ -38,10 +38,8 @@
 <div class="navigation-buttons">
     {% if prev_file %}
     <a href="{{ url_for('solution', filename=prev_file) }}" class="nav-btn">
-        &laquo; Previous 
+        &laquo; Précédent 
     </a>
-    {% else %}
-    <span class="nav-btn disabled">&laquo; Previous </span>
     {% endif %}
     
     <span class="file-counter">
@@ -50,10 +48,8 @@
 
     {% if next_file %}
     <a href="{{ url_for('solution', filename=next_file) }}" class="nav-btn">
-        Next  &raquo;
+        Suivant  &raquo;
     </a>
-    {% else %}
-    <span class="nav-btn disabled">Next  &raquo;</span>
     {% endif %}
 </div>
 

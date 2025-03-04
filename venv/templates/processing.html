@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Processing Files</h2>
+<h2>Traitement de fichiers</h2>
 {% for filename in filenames %}
 <div id="status-{{ filename }}" class="status-box">
-    Processing {{ filename }}... <span class="spinner"></span>
+    Traitement de  {{ filename }}... <span class="spinner"></span>
 </div>
 {% endfor %}
 <script>
@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(data => {
                     const statusDiv = document.getElementById('status-' + filename);
                     if (data.ready) {
-                        statusDiv.innerHTML = `Ready: <a href="${data.url}">View ${filename}</a>`;
+                        statusDiv.innerHTML = `Prêt: <a href="${data.url}">View ${filename}</a>`;
                         clearInterval(checkInterval);
                     } else if (data.url) {
                         window.location.href = data.url;

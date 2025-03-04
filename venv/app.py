@@ -6,7 +6,7 @@ from werkzeug.utils import secure_filename
 import subprocess
 from redis import Redis
 from config import Config
-db = SQLAlchemy()
+from models import Users, History,db
 redis_client=Redis(
     host=Config.REDIS_HOST,
     port=Config.REDIS_PORT,
@@ -34,25 +34,13 @@ def create_app():
     os.makedirs(app.config['PDF_FOLDER'], exist_ok=True)
     os.makedirs(app.config['TEX_FOLDER'], exist_ok=True)
 
-    # --- DB Model ---
-    class Users(db.Model):
-        _id = db.Column("id", db.Integer, primary_key=True)
-        username = db.Column(db.String(100))
-        email = db.Column(db.String(100))
-        password = db.Column(db.String(100))
-
-        def __init__(self, username, email, password):
-            self.username = username
-            self.email = email
-            self.password = password
-
+    
     def allowed_file(filename):
         ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
     @app.context_processor
     def inject_user():
         user = None
-        # Note: Since Users is defined inside create_app, you can refer to it here.
         if 'email' in session:
             found_user = Users.query.filter_by(email=session['email']).first()
             if found_user:
@@ -68,7 +56,15 @@ def create_app():
             if found_user:
                 user = found_user.username
         return render_template('index.html', user=user)
-
+    @app.route('/history')
+    def history():
+        if 'email' not in session:
+            return redirect(url_for('login'))
+        user = Users.query.filter_by(email=session['email']).first()
+        if not user:
+            return redirect(url_for('login'))
+        entries = History.query.filter_by(user_id=user._id).order_by(History.timestamp.desc()).all()
+        return render_template('history.html', entries=entries)
     @app.route('/login', methods=['POST', 'GET'])
     def login():
         if request.method == 'POST':
@@ -129,7 +125,6 @@ def create_app():
                         flash(f"Error saving {filename}: {str(e)}")
 
             if saved_filenames:
-        # Store uploaded files in session
                 session['uploaded_files'] = saved_filenames
                 return redirect(url_for('processing', filenames=','.join(saved_filenames)))
             else:
@@ -172,7 +167,7 @@ def create_app():
                 pdf_filename = file_data.get(b"pdf_filename", b"").decode()
                 return jsonify({
                     "ready": True,
-                    "url": url_for('display_pdf', filename=pdf_filename)
+                    "url": url_for('display_pdf', filename=os.path.splitext(pdf_filename)[0]+'.pdf')
                 })
             elif status == "failed":
                 error = file_data.get(b"error", b"Unknown error").decode()
@@ -223,10 +218,6 @@ def create_app():
 
     @app.route("/compile_tex/<filename>", methods=["POST"])
     def compile_tex(filename):
-        """
-        Receive the edited LaTeX code from the validation page, write it to the .tex file,
-        run pdflatex to compile it, and redirect to the PDF display page.
-        """
         edited_code = request.form.get("latex_code")
         if not edited_code:
             flash("No LaTeX code submitted.")
@@ -262,16 +253,24 @@ def create_app():
 
     @app.route('/solution_pdf/<filename>')
     def solution_pdf(filename):
+        if 'email' not in session:
+            return redirect(url_for('login'))
+        user = Users.query.filter_by(email=session['email']).first()
+        if not user:
+            return redirect(url_for('login'))
         from tasks import process_solution_program_task
         safe_filename = secure_filename(filename)
         base_name = os.path.splitext(safe_filename)[0]
-        process_solution_program_task.delay(base_name)
+        process_solution_program_task.delay(base_name,user._id)
         return redirect(url_for('processing_solution', filename=safe_filename.replace(".pdf","_solution.pdf")))
     @app.route('/solution/<filename>')
     def solution(filename):
         base_name = os.path.splitext(filename)[0].replace("_solution", "")
-        grade = redis_client.hget(f"grades:{base_name}", "grade")
-        grade_value = grade.decode() if grade else "Not available"
+        history_entry = History.query.filter_by(filename=base_name).first()
+        if history_entry:
+            grade_value = history_entry.grade
+        else:
+            grade_value = "Not graded"
         
         # Get solution files list
         uploaded_files = session.get('uploaded_files', [])
@@ -314,19 +313,49 @@ def create_app():
     def process_all_solutions():
         """Trigger solution generation for all processed files"""
         from tasks import process_solution_program_task
-        
+        if 'email' not in session:
+            return redirect(url_for('login'))
+        user = Users.query.filter_by(email=session['email']).first()
+        if not user:
+            return redirect(url_for('login'))
+
         # Get all base names from the TEX_FOLDER
         tex_files = [f for f in os.listdir(app.config['TEX_FOLDER']) if f.endswith('.tex')]
         base_names = [os.path.splitext(f)[0] for f in tex_files if '_solution' not in f]
         
         # Start solution tasks for all files
         for base_name in base_names:
-            process_solution_program_task.delay(base_name)
+            process_solution_program_task.delay(base_name, user._id)
         
         return jsonify({
             "message": f"Started solution generation for {len(base_names)} files",
             "files": base_names
         })
+    @app.route('/delete_history/<int:entry_id>', methods=['POST'])
+    def delete_history(entry_id):
+        if 'email' not in session:
+            return redirect(url_for('login'))
+        
+        user = Users.query.filter_by(email=session['email']).first()
+        if not user:
+            return redirect(url_for('login'))
+        
+        entry = History.query.get_or_404(entry_id)
+        
+        # Verify ownership
+        if entry.user_id != user._id:
+            flash("Accès non autorisé")
+            return redirect(url_for('history'))
+        
+        try:
+            db.session.delete(entry)
+            db.session.commit()
+            flash("Entrée supprimée avec succès")
+        except Exception as e:
+            db.session.rollback()
+            flash("Erreur lors de la suppression")
+    
+        return redirect(url_for('history'))
     @app.route('/check_all_solutions')
     def check_all_solutions():
         """Check status of all solution generations"""

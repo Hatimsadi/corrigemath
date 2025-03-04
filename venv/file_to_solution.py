@@ -9,9 +9,12 @@ import PyPDF2
 from celery_app import flask_app
 load_dotenv()  
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+deepseek_api_key = os.getenv('DEEPSEEK_API_KEY')
 client = OpenAI(
   api_key=OPENAI_API_KEY
 )
+deepseek=OpenAI(
+  api_key=deepseek_api_key,base_url="https://api.deepseek.com")
 
 def encode_image(image_path):
     with open(image_path, "rb") as image:
@@ -41,13 +44,13 @@ def image_to_text(image_path):
         else:
             image = encode_image(image_path)
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4o",
                 messages=[{
                     "role": "user",
                     "content": [
                         {
                             "type": "text",
-                            "text": ("Convert to LaTeX code. Include these packages:\n"
+                            "text": ("Convert to LaTeX code. You need to know that the image is in French . Include these packages:\n"
                                      "\\usepackage[utf8]{inputenc}\n"
                                      "\\usepackage[T1]{fontenc}\n"
                                      "\\usepackage{amsmath}\n"
@@ -112,8 +115,8 @@ def latex_solution(filename):
         with open(filename, 'r') as file:
             latex_content = file.read()
         print("\n[latex_solution] Read original LaTeX content from:", filename)
-        response = client.chat.completions.create(
-            model="gpt-4o",
+        response = deepseek.chat.completions.create(
+            model="deepseek-reasoner",
             messages=[
                 {"role": "user", 
                  "content": (
@@ -130,6 +133,8 @@ def latex_solution(filename):
                      "Be more severe in your correction."
                      "If they don't give justification, remove points."
                      "write in color red to the correction you added"
+                     "give recommandations for the student at the end of the copy"
+                     "don't forget to give the correct format for the latex code , don't forget to add every library and begin document"
                      "And provide the solution in LaTeX format, don't add any other text:\n\n" + latex_content
                  )}
             ]

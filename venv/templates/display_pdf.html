@@ -103,7 +103,7 @@
 <div class="navigation-buttons">
   {% if prev_file %}
   <a href="{{ url_for('display_pdf', filename=prev_file) }}" class="button nav-btn">
-      &laquo; Previous 
+      &laquo; Précédent 
   </a>
   {% endif %}
   
@@ -113,7 +113,7 @@
 
   {% if next_file %}
   <a href="{{ url_for('display_pdf', filename=next_file) }}" class="button nav-btn">
-      Next &raquo;
+      Suivant &raquo;
   </a>
   {% endif %}
 </div>
@@ -123,11 +123,11 @@
   </a>
 
   <button id="generateAllSolutions" class="button solution-btn">
-      Generate All Solutions
+      Générer toutes les solutions
   </button>
 
   <a href="{{ url_for('validate', filename=pdf_filename.replace('.pdf', '')) }}" class="button edit-btn">
-      Edit LaTeX
+      Modifier Latex
   </a>
 </div>
 
@@ -138,12 +138,12 @@
 
 <div style="text-align: center;">
   <a href="{{ url_for('download_pdf', filename=pdf_filename) }}" class="button download-btn">
-      Download PDF
+      Télécharger PDF
   </a>
 </div>
 
 <div class="status-container">
-  <h3>Solution Generation Progress</h3>
+  <h3>Génération des solutions en cours</h3>
   <div id="solutionStatuses"></div>
 </div>
 
