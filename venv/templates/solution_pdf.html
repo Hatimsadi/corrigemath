@@ -2,6 +2,79 @@
 
 {% block styles %}
 <style>
+    @keyframes bounce {
+        0%, 80%, 100% { 
+            transform: translateY(0);
+        }
+        40% {
+            transform: translateY(-8px);
+        }
+    }
+
+    @keyframes pulse {
+        0%, 100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.5;
+        }
+    }
+    
+    .chat-container {
+        margin: 40px 10%;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+    }
+
+    .chat-messages {
+        height: 300px;
+        overflow-y: auto;
+        margin-bottom: 20px;
+        padding: 10px;
+        background: #f9f9f9;
+        border-radius: 4px;
+    }
+
+    .message {
+        margin: 10px 0;
+        padding: 8px 12px;
+        border-radius: 15px;
+        max-width: 70%;
+    }
+
+    .user-message {
+        background: #4a5568;
+        color: white;
+        margin-left: auto;
+    }
+
+    .bot-message {
+        background: #e2e8f0;
+        margin-right: auto;
+    }
+
+    .chat-input {
+        display: flex;
+        gap: 10px;
+    }
+
+    #messageInput {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+
+    #sendButton {
+        padding: 10px 20px;
+        background: #4a5568;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
     .navigation-buttons {
         display: flex;
         justify-content: space-between;
@@ -29,6 +102,51 @@
         font-size: 1.2em;
         margin: 20px 0;
     }
+
+    .math {
+        font-size: 1.1em;
+        padding: 2px 4px;
+    }
+    
+    .MJXc-display {
+        margin: 0.5em 0 !important;
+    }
+    
+    /* Left-aligned loading indicator styles */
+    .loading-indicator {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        margin: 10px 0;
+        max-width: 70%;
+        margin-right: auto;
+        background: #e2e8f0;
+        border-radius: 15px;
+        padding: 8px 12px;
+    }
+    
+    .loading-logo {
+        width: 30px;
+        height: 30px;
+        margin-right: 10px;
+    }
+    
+    .loading-dots {
+        display: flex;
+        justify-content: flex-start;
+        gap: 6px;
+    }
+    
+    .dot {
+        width: 8px;
+        height: 8px;
+        background-color: #4a5568;
+        border-radius: 50%;
+    }
+    
+    .dot:nth-child(1) { animation: bounce 1.4s infinite 0s; }
+    .dot:nth-child(2) { animation: bounce 1.4s infinite 0.2s; }
+    .dot:nth-child(3) { animation: bounce 1.4s infinite 0.4s; }
 </style>
 {% endblock %}
 
@@ -60,4 +178,116 @@
 <div class="grade-display">
     <h3>Note: {{ grade }}</h3>
 </div>
+
+<div class="chat-container">
+    <h2>Vous avez des questions à propos de la correction ?</h2>
+    <div class="chat-messages" id="chatMessages">
+        <!-- Left-aligned loading indicator -->
+        <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+            <img src="{{ url_for('static', filename='logo.ico') }}" class="loading-logo" alt="Logo">
+            <div class="loading-dots">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="chat-input">
+        <input type="text" id="messageInput" placeholder="Saisissez votre message ici">
+        <button id="sendButton">Envoyer</button>
+    </div>
+</div>
+
+<!-- MathJax & Security Libraries -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.5/purify.min.js"></script>
+
+<script>
+    // Function to append messages to the chat
+    function appendMessage(message, isUser) {
+        const chatMessages = document.getElementById('chatMessages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+        
+        // Sanitize the message
+        const cleanMessage = DOMPurify.sanitize(message);
+        
+        // Handle LaTeX in the message:
+        // 1. Replace single dollar sign pairs with inline math
+        let processedMessage = cleanMessage.replace(/\$([^\$]+)\$/g, '\\($1\\)');
+        
+        // 2. Leave double dollar sign pairs as display math
+        processedMessage = processedMessage.replace(/\$\$([^$]+)\$\$/g, '\\[$1\\]');
+        
+        messageDiv.innerHTML = processedMessage;
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        // Render math with MathJax
+        if (typeof MathJax !== 'undefined') {
+            MathJax.typesetPromise([messageDiv]).catch(function(err) {
+                console.log('MathJax error:', err);
+            });
+        }
+    }
+
+    // Modified loading functions
+    function showLoading() {
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        loadingIndicator.style.display = 'flex';
+    }
+    
+    function hideLoading() {
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        loadingIndicator.style.display = 'none';
+    }
+
+    // Send message function
+    async function sendMessage() {
+        const input = document.getElementById('messageInput');
+        const message = input.value.trim();
+        if (!message) return;
+
+        appendMessage(message, true);
+        input.value = '';
+        showLoading();
+
+        try {
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: message,
+                    filename: "{{ filename }}"
+                }),
+            });
+
+            const data = await response.json();
+            hideLoading();
+            
+            if (data.response) {
+                appendMessage(data.response, false);
+            } else {
+                appendMessage("Désolé, je n'ai pas pu traiter votre demande.", false);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            hideLoading();
+            appendMessage("Erreur de connexion au service de chat.", false);
+        }
+    }
+
+    // Event listeners
+    document.getElementById('messageInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+    
+    document.getElementById('sendButton').addEventListener('click', sendMessage);
+</script>
 {% endblock %}

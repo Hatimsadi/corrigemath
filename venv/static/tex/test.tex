@@ -1,0 +1,62 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\begin{document}
+
+\begin{center}
+\textbf{Examen de Mathématique}\\
+L3 Physique-Chimie, Juin 2004
+\end{center}
+
+\section*{A- Résolution générale des équations différentielles de première ordre.}
+
+Nous allons utiliser les règles de manipulation des Transformées de Laplace pour obtenir la solution générale d'une équation différentielle avec second membre
+
+\begin{equation}
+\frac{du}{dt} = au + b(t)
+\end{equation}
+
+où \(a(t)\) est la fonction que nous voulons déterminer, et une constante et \(b(t)\) une fonction connnue.
+
+Nous allons procéder par étape pour obtenir l'originale de fonctions de plus en plus compliquées. Nous utiliserons encore ces résultats pour résoudre l'équation (1). Notons \(f(t)\) l'originale d'une fonction quelconque \(F(p)\).
+
+1. Quelle est l'originale de la fonction \(f(t) = \frac{1}{p}\) ?
+
+2. Quelle est l'originale de la fonction \(f(t) = \frac{1}{p^2}\) ?
+
+3. En utilisant les résultats précédents, trouver l'originale de \(\frac{1}{(p+a)(p+a)^2}\).
+
+4. Soit \(J(t) = f(t-a) - f(t-a)\). Quelle est la relation entre les originales de ces deux fonctions, \(b(t)\) et \(u(t)\) en termes de solutions ?
+
+5. Résoudre l'équation (1) sous les conditions limites présentées, pénétrer les résultats pour \(b(t)\).
+
+\textbf{Remarque:} en utilisant la méthode des transformées de Laplace et les résultats des paragraphes précédents, parmi les trois exercices à résoudre dans la partie A. Vous serez en mesure de bien classifier les solutions, se souvenir de les pointer sur la TL. Le dernier exercice, en particulier, explore particulièrement ce point.
+
+\begin{itemize}
+    \item La transformation de gauche est largement simplifiée pour résoudre une équation avec second membre
+\end{itemize}
+
+\section*{B- Croissance des bactéries.}
+
+L'équation de croissance des bactéries, connue comme l'équation logistique, est la suivante :
+
+\begin{equation}
+\frac{dn}{dt} = an - bn^2 \quad (2)
+\end{equation}
+
+Où \(a\) est la concentration de bactéries et \(b\) une constante qui dépend de leur intensité d'emprise.
+
+6. Résoudre l'équation (2).
+
+7. En utilisant un nombre réduit de données des cours de densité, déterminer une telle intensité.
+
+8. En utilisant l'équation réduite, exposez et discutez de l'influence que ceci pourrait avoir.
+
+9. Sans faire appel à aucune suite servant ces résultats d'un exercice, tracer l'allure générale de la solution et utiliser la condition initiale \(n(t=0) = a/2\). Expliquer votre interprétation.
+
+\end{document}

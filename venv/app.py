@@ -7,6 +7,9 @@ import subprocess
 from redis import Redis
 from config import Config
 from models import Users, History,db
+import openai
+import requests
+import json
 redis_client=Redis(
     host=Config.REDIS_HOST,
     port=Config.REDIS_PORT,
@@ -184,6 +187,83 @@ def create_app():
             return jsonify({"ready": False})
         else:
             return jsonify({"ready": False, "error": "File not found"})
+    @app.route('/chat', methods=['POST'])
+    def chat_with_deepseek():
+        if 'email' not in session:
+            return jsonify({"error": "Authentication required"}), 401
+        user = Users.query.filter_by(email=session['email']).first()
+        data = request.get_json()
+        user_message = data.get('message')
+        filename = data.get('filename').replace(".pdf", ".tex")
+        redis_key = f"chat_history:{user._id}:{filename}"
+        chat_history = redis_client.get(redis_key)
+        if chat_history:
+            previous_messages = json.loads(chat_history)
+            context_string = ""
+            for msg in previous_messages:
+                if msg.get("role") != "system":  # Skip the system message
+                    role = "Student" if msg.get("role") == "user" else "Teacher"
+                    context_string += f"{role}: {msg.get('content')}\n\n"
+        else:
+            previous_messages = []
+            context_string = ""
+        tex_path = os.path.join(app.config['TEX_FOLDER'], filename)
+        document_context = "Solution context not available"
+        try:
+            with open(tex_path, 'rb') as f:
+                document_context = f.read().decode('utf-8')
+        except Exception as e:
+            app.logger.error(f"TEX read error: {str(e)}")
+        system_message = {
+        "role": "system", 
+        "content": f"""You are The teacher who corrected the math exam and you have to help the student with his questions.
+        The answer should be in French.
+        
+        Document context that you have made: {document_context}
+        
+        Previous conversation (for context only):
+        {context_string}
+        
+        IMPORTANT: Only answer the student's latest question. Do not address previous questions again unless they're directly relevant to the current question."""
+        }
+        messages = [
+        system_message,
+        {"role": "user", "content": user_message}]
+        try:
+            client = openai.Client(api_key=Config.DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
+            response = client.chat.completions.create(
+                model="deepseek-chat",
+                messages=messages,
+                stream=False            
+            )
+            ai_response = response.choices[0].message.content
+            if not previous_messages:
+                history_to_save = [
+                    {"role": "system", "content": f"You are The teacher who corrected the math exam and you have to help the student with his questions. The answer should be in French."}
+                ]
+            else:
+                history_to_save = previous_messages
+            
+            # Add the current interaction to history
+            history_to_save.append({"role": "user", "content": user_message})
+            history_to_save.append({"role": "assistant", "content": ai_response})
+            
+            # Keep only the most recent exchanges to prevent context from growing too large
+            history_to_save = history_to_save[-11:] if len(history_to_save) > 11 else history_to_save
+            
+            redis_client.setex(
+                redis_key,
+                3600,  # Expire after 24h
+                json.dumps(history_to_save)
+            )
+        except Exception as e:
+            app.logger.error(f"OpenAI API error: {str(e)}")
+            ai_response = "Sorry, I'm having trouble connecting to the AI service."
+        
+        return jsonify({
+            "response": ai_response,
+            "context_used": filename
+        })
     @app.route('/get_grade/<base_name>')
     def get_grade(base_name):
         grade = redis_client.hget(f"grades:{base_name}","grade")
@@ -374,6 +454,7 @@ def create_app():
             }
         
         return jsonify(statuses)
+    
     return app
 
 # --- Main (so you can still run via python app.py) ---
